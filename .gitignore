@@ -1,4 +1,3 @@
-book-ocr/
 venv/
 __pycache__/
 *.pyc
