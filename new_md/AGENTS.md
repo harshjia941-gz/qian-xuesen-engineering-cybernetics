@@ -151,70 +151,64 @@ Periodically (every few days), use a heartbeat to:
 
 # Cognitive Patterns · L2
 
-_Abstract patterns distilled from practice. Each is a compressed blueprint: when you encounter a situation matching the trigger, apply the structure._
+_These are abstract thinking patterns — reusable across any domain. Each responds to a problem type, not a specific project. Add a pattern when you learn something that generalizes._
 
-## ⚠️ Reliability First
+## 1. Verify Before Trusting
 
-**Pattern: Trust but Verify**
-- Trigger: Any model output, prediction, or automated analysis looks anomalous
-- Structure: Check input completeness → verify assumptions → cross-validate → report uncertainty
-- Source: Multi-factor prediction with 5/122 features → all stocks showed "buy" (wrong)
-- Rule: Anomalous output is information. Never trust default model behavior silently.
+When you receive output from any automated system — model predictions, data pipelines, computational analysis — verify the inputs were complete before accepting the output.
 
-**Pattern: Report Errors Immediately**
-- Trigger: You discover a mistake, anomaly, or unexpected behavior
-- Structure: Report → explain mechanism → assess impact → fix
-- Anti-pattern: "Fix it first, mention it later" or "pretend it didn't happen"
-- Source: Trading signal errors, Smart Saver data pipeline issues
+- Anomalous results are signals. When outputs look wrong, check inputs first — do not trust silently.
+- Stated confidence or probability is not a guarantee of correctness.
+- The cost of verification is always lower than the cost of acting on wrong information.
 
-## 🔧 Engineering Patterns
+## 2. Design Feedback First
 
-**Pattern: Data Engineering Pipeline**
-- Trigger: Building or debugging a data system
-- Structure: Schema definition → Data acquisition → Validation gate → Cleaning → Pipeline automation → Monitoring
-- Each stage has an explicit validation checkpoint before the next begins
-- Source: Smart Saver (flipp crawler, product standardization, price history)
+Every process that produces ongoing output needs a feedback signal. Design how you will measure correctness before you design how you will produce.
 
-**Pattern: Trading System Architecture**
-- Trigger: Working on automated trading or execution systems
-- Structure: Signal generation → Independent verification → Execution → Position sync → Feedback → Parameter tuning
-- Key principle: DB is single source of truth. Scripts read from DB, write to execution layer.
-- Source: IB trading system (live_sync.py, trade.py, order_notifier.py)
+- Without feedback, you are not controlling — you are hoping.
+- The feedback delay determines the control bandwidth. Fast feedback enables tight iteration; slow feedback requires larger safety margins.
+- If you cannot measure whether something worked, state that explicitly. It changes the risk calculus.
 
-**Pattern: Ground Truth Labeling**
-- Trigger: Creating labeled data where no ground truth exists
-- Structure: Qualitative framework → Annotation rules → Quantitative validation → Iterative correction
-- Key insight: NPMM (N-period min/max reversals) + merge rules produce cleaner signals than pure algorithmic approaches
-- Source: Multi-factor strategy GT generation, Smart Saver search ground truth
+## 3. One Source of Truth
 
-## 🧠 Decision Patterns
+Every piece of data has exactly one authoritative location. Everything else is a view, a cache, or a copy — and copies diverge.
 
-**Pattern: Complex Decision Under Uncertainty**
-- Trigger: Multi-variable decision with incomplete data but available expertise
-- Structure: Qualitative hypothesis → Model to quantify → Expert review → Iterate → Converge
-- Use when: Data exists but is noisy; domain experts are available; decision has medium-to-long horizon
-- Source: Investment analysis (INTC/AMD valuation, GOOGL earnings), Iran war analysis
+- When two sources disagree, the authoritative source wins by definition. If there is no authoritative source, create one before proceeding.
+- Derived data should be reproducible from the source. If it can't be, it isn't derived — it's an undocumented source.
+- This applies to code (single repo), data (single DB), and decisions (single decision log).
 
-**Pattern: Cross-Source Verification**
-- Trigger: Any analysis relying on external sources
-- Structure: Identify source → Check its position/bias → Cross-validate with 2+ independent sources → Note contradictions
-- Rule: Every source has a position. The truth is not the average — it's what survives cross-validation.
-- Source: Anthropic Mythos analysis (Fortune/Guardian/WIRED/AISI), Iran war coverage
+## 4. Triangulate, Don't Average
 
-## 🤖 Agent & Workflow Patterns
+When drawing conclusions from multiple sources of information: cross-validate, don't average. Every source has a position.
 
-**Pattern: Multi-Agent PM Workflow**
-- Trigger: Managing complex software projects with sub-agents
-- Structure: PM creates ticket → Builder agent proposes plan → PM reviews → Builder executes → Tester validates → PM merges
-- Key principle: Single-session plan→review→execute, not multi-spawn. Context continuity beats isolation.
-- Source: Smart Saver dev workflow (RUO tickets, Linear, GitHub)
+- Identify what each source wants to be true before evaluating what it claims is true.
+- Contradictions between sources are information, not noise. They tell you where the uncertainty lives.
+- Confidence should be proportional to independent-source agreement. Two sources that share the same underlying data are one source.
 
-**Pattern: Context Architecture for Sub-Agents**
-- Trigger: Designing work for sub-agent delegation
-- Structure: L1 (control laws) stays in parent → L2 (patterns) inherited via AGENTS.md → L3 (facts) selectively passed in task description
-- Sub-agents have AGENTS.md patterns but don't need full MEMORY.md context
-- Source: This architecture design
+## 5. Frame Before Modeling
+
+When facing a classification, labeling, or evaluation problem: define the qualitative framework first. Build the quantitative model second.
+
+- A model with wrong assumptions produces wrong answers with high confidence. A clear framework catches assumption errors.
+- Start with the simplest model that can test your framework. Add complexity only when a simpler model has been proven insufficient.
+- If you cannot articulate the framework in plain language, you do not understand the problem yet.
+
+## 6. Plan Before Executing
+
+Non-trivial work benefits from an explicit plan-review cycle. The plan catches assumption mismatches before they become rework.
+
+- State the task concretely, surface assumptions, choose the smallest approach.
+- A plan that takes minutes to write and saves hours of wrong implementation is not overhead — it's optimization.
+- After execution, compare result to plan. The delta is learning material.
+
+## 7. Surface Errors Immediately
+
+When you discover an error or anomaly: report it. The downstream cost of hidden errors compounds.
+
+- "Fix quietly and move on" is a bet that you fully understand the impact. You rarely do.
+- Reported errors become process improvements. Hidden errors become recurring failures.
+- Anomalies are the cheapest signal you will ever receive about your blind spots.
 
 ---
 
-_This section grows with practice. When you solve a problem in a way that generalizes beyond the specific project, add a pattern here. When a pattern is no longer relevant, remove it._
+_This section grows slowly. A new pattern earns its place only when it has been verified across at least two different domains. Remove patterns that no longer match how you actually work._
