@@ -1,230 +1,145 @@
-<!-- L3 Facts Layer | Patterns → AGENTS.md | Control Laws → SOUL.md -->
-# MEMORY.md - Long-term Memory
+<!-- L3 Facts Layer → 项目导航地图 → 细节在项目本地/git/Linear -->
 
-## Smart Saver 项目状态 (2026-04-25)
+# MEMORY.md — Project Directory · L3
 
-### 当前进度
-- **RUO-51 (搜索精度)**: PR #13 已 merge ✅ — REGEXP + tiered scoring 即时 fix 完成
-- **RUO-62 (ground truth v1)**: Invalid — label 不清晰，query 粒度不够
-- **RUO-63 (session mode)**: ✅ Done — 所有角色已改 session mode
-- **RUO-64 (ground truth v2)**: ✅ Done — commit 62ff8e3 pushed to dev, 24 products, 175 listings
-- **RUO-65 (PM+Agent 工作流)**: In Progress — clone repo 到 workspace 解决 sandbox 限制
-
-### RUO-64 执行结果 (2026-04-25)
-- **输出**: `tests/scenarios/search_ground_truth.json` (v2)
-- **24 products**: 15 model-specific + 9 category
-- **175 listings**: 自动标注 + 去重 + 采样
-- **核心改进**: query-relative labeling（query 越具体匹配越严格）
-- **数据缺口**: iPhone 15 (0), MacBook Pro 14 M4 (0), MX Master 3S (0) — DB 无数据
-- **构建脚本**: `scripts/build_ground_truth_v2.py`（regex 规则自动标注）
-
-### 流程改进 (今天)
-- **PM+Agent 工作流验证**: PM 给任务 → Agent 出 plan → PM review → Agent 执行
-- **Sandbox 解决方案**: git clone repo 到 workspace 内，agent 可自由读写
-- **Plan-Approval 严格化**: 所有角色必须先出 plan 等 PM 审批
-- **两阶段 spawn 废弃**: 单 session 内完成 plan→review→execute，上下文连续
-
-### 技术债务
-- 4 个产品无 DB 数据，需 Flipp API 补充或等真实数据
-- Workspace clone 的 DB 需要手动同步（cp from ~/Documents/smart-saver/）
-
-### Repo
-- GitHub: harshjia941-gz/smart-saver
-- DB: ~/Documents/smart-saver/scripts/smart_saver.db (原始) / workspace clone (副本)
-- Workspace clone: ~/.openclaw/workspace/smart-saver/
-- 主要分支: dev, main
+_This file is a map, not a warehouse. For each project: what it is, why it exists, where to find it, and its current high-level status. Details live in project-specific locations._
 
 ---
 
-## 交易系统 v2.0 架构 (2026-02-10)
+## 1. Smart Saver
 
-### 命令结构
+**Purpose**: AI-powered cross-platform price comparison engine for grocery/shopping.
 
-```bash
-python live_sync.py position-sync  # 仅同步持仓
-python live_sync.py oco-setup      # 设置 OCO 止盈止损
-python live_sync.py full-sync      # 完整同步
-python live_sync.py status         # 查看状态
-python live_sync.py history        # 查看历史
-```
+**Context**: George's startup (Ferris AI). Compares prices across Flipp, grocery retailers, and e-commerce platforms. Uses agent workflow for development (PM → Builder → Tester cycle).
 
-### 数据库表
+**Locations**:
+- Local: `~/Documents/smart-saver/`
+- Git: `github.com/harshjia941-gz/smart-saver` (main, dev)
+- Linear: `linear.app/ruoshuiai`
+- Skill: `~/.openclaw/workspace/skills/smart-saver/`
+- DB: `~/Documents/smart-saver/scripts/smart_saver.db`
 
-| 表名 | 用途 |
-|------|------|
-| `oco_groups` | OCO 订单组管理 |
-| `sync_log` | 同步操作日志 |
-| `order_tracking` | 订单全生命周期追踪 (含 oco_group, oco_parent_id, oco_sibling_id) |
+**Setup**: Python project, Flipp API integration, SQLite DB, daily cron at 6AM Toronto.
 
-### 订单分类
+**Status**: Active development. Data engine v3.1 deployed (99% product coverage). Flipp daily pipeline running. Search ground truth built (v2, 24 products, 175 listings). Product merge engine (RUO-24) next major milestone.
 
-- `POSITION`: 仓位同步订单 (MAINT)
-- `OCO_TP`: OCO 止盈单 (PLAN)
-- `OCO_SL`: OCO 止损单 (PLAN)
-- `SIGNAL`: 信号执行订单 (PLAN)
-
-### IB 连接
-
-- Paper Trading: 端口 4002, clientId 888
-- Real Trading: 端口 7497
-
-## 已知问题 (2026-02-11 更新)
-
-- ~~OCO 保护缺失~~: ✅ 已创建20个活跃OCO组，后于20:25全部取消待重新配置
-- ~~PENDING 订单~~: ✅ 已取消2个PENDING订单
-- ~~同步失败~~: ✅ full-sync连接成功，21个仓位已同步
-- ~~TSLA仓位不匹配~~: ✅ DB已更新为100股@$400.44，Paper待明日开盘同步
-
-### 今日新增工具
-- `trade_helper.py` - 手动交易后更新DB持仓和成本价
-- `sync_check.py` - 检测未同步变更并支持自动同步
-
-### 待处理
-- [x] 运行 live_sync.py full-sync
-- [x] 处理 2513 PENDING 订单  
-- [x] 为所有持仓设置 OCO 保护 → 后取消，待重新配置策略
-- [ ] TSLA Paper仓位同步（明日开盘）
-- [ ] 添加 `trade.py health-check` 命令
+**Detail files**: Project-specific progress in Linear tickets and `smart-saver-management.md`.
 
 ---
 
-## 🧠 Agent CPU需求深度调研 (2026-04-29)
+## 2. Trading System
 
-George（Yuan Zhou）提出"Agent推理端CPU需求爆发"的投资主题，进行了多轮深度技术+投资讨论。
+**Purpose**: Automated trading system with IB integration, position management, and OCO order protection.
 
-**核心文件**: `memory/agent-cpu-deep-dive.md`
-**核心洞察**:
-- CPU占Agent总延迟50-90.6%（Georgia Tech/Intel论文 arXiv:2511.00739）
-- CPU:GPU比例从1:8反转到1:1（Agent时代）
-- Agent 24/7运行 → 计算利用率从10%到60-75%（13x乘数）
-- RL Post-Training需要CPU模拟Agent环境（CPU:GPU比2:1到10:1）
-- 1亿Agent → CPU增量$1,200-1,800亿 + 存储$50-150亿 + 电力6GW
-- 最被低估的机会：Agent Memory Layer（$60-200亿新市场，完全未定价）
+**Context**: Multi-strategy trading (multi-factor, chanlun technical). Paper trading for execution, real account for read-only market data.
 
-**George的组合**: NVDA 17% | 智谱02513 17% | GOOGL 10% | AMD 8% | INTC 7%(成本$15) | TSM 3% | OKLO 3%
-**INTC $94.75, AMD $337** — 均已严重透支分析师预期
-**待续**: George会给自己的增长假设，精确算目标价
+**Locations**:
+- Local: `~/Documents/openclaw-trading/`
+- Workspace scripts: `~/.openclaw/workspace/trading_system/`
+- Skill: `~/.openclaw/workspace/skills/stock-analyzer/`
 
----
+**Setup**:
+- IB Paper Trading: port 4002, clientId 888, account DUA093877 (~$1M CAD simulated)
+- IB Real Trading: port 7497 (read-only), accounts U15169916/U15324805 (~$53K CAD)
+- DB: `trading_system/trade_system.db` (single source of truth)
+- Key scripts: `live_sync.py` (position sync + OCO), `trade.py` (position/signal management), `order_notifier.py` (Telegram alerts)
 
-## 🤖 Anthropic Claude Mythos 追踪 (2026-04-16)
+**Status**: v2.0 operational. Daily sync working. OCO protection framework in place. Known: TSLA position mismatch resolved, 2513 HK stock PENDING order handled.
 
-George 长期关注 AI 行业竞争格局。
-- **追踪文件**: `memory/anthropic-mythos-tracker.md`
-- **分析框架**: 毛泽东思维框架
-- **核心判断**: Mythos不公开是五因素叠加（算力不足~30%、护城河~25%、IPO估值~20%、监管捕获~20%、真实安全~15%），安全叙事是包装
-- **内部消息**: Anthropic内部团队不是都有大量使用权限
-- **关键信源**: Fortune(算力危机)、Guardian(PR策略)、WIRED(监管捕获)、UK AISI(独立验证)
-- **待追踪**: 算力缓解进度、OpenAI竞品、IPO进展、开源追赶速度
+**Detail files**: `trading_system/trade_system_updates.md` for atomic change log.
 
 ---
 
-## 🇮🇷 美伊战争持续关注 (2026-04-16)
+## 3. Investment Analysis
 
-George 长期关注伊朗局势，建立了追踪文件。
-- **追踪文件**: `memory/iran-war-tracker.md`
-- **分析框架**: 教员（毛泽东）思维框架
-- **核心判断**: 伊朗主要矛盾是内部合法性危机+经济崩溃，外部军事是次要矛盾
-- **中国立场分析**: 不选边做和事佬，海湾利益远大于伊朗
-- **关键**: 注意信源bias校正，交叉验证
+**Purpose**: George's investment research and portfolio management.
 
----
+**Context**: Multi-framework analysis combining fundamental, technical (缠论), and control-theory perspectives. Current focus: Agent CPU thesis, China AI (智谱 02513), US tech (GOOGL, INTC, AMD).
 
-## 多因子策略 Ground Truth 方法论 (2026-02-13)
+**Locations**:
+- Research files: `memory/agent-cpu-deep-dive.md`, `memory/2026-04-30-googl-analysis.md`
+- Trading strategies: `~/Documents/openclaw-trading/strategies/multi_factor/`
+- Iran war context: `memory/iran-war-tracker.md`
 
-### 现有方法
-- **ZigZag v4**: 连续覆盖 ZigZag, 8% deviation, 100% 交易日覆盖
-- **已测试股票**: AMD (45趋势段), BABA (47趋势段)
+**George's Portfolio** (as of 2026-04-29):
+- NVDA 17%, 智谱 02513 17%, GOOGL 10%, AMD 8%, INTC 7% (cost $15), TSM 3%, OKLO 3%
 
-### 公开方法调研
-| 方法 | 核心思想 |
-|------|----------|
-| NPMM | 只在价格触及N周期新低/新高时标记，论文证明效果最好 |
-| Triple-Barrier | 止盈/止损/时间三层 barrier (Lopez de Prado) |
-| Trend Scanning | 多窗口扫描，自适应视野 |
+**Status**: Agent CPU thesis developed (1亿Agent → $1,200-1,800亿 CPU增量). GOOGL Q1 strong ($109.9B revenue, +22%). INTC $94.75, AMD $337 — both pricing in optimistic scenarios. 智谱 valuation analysis complete (瑞银 target HK$1,160, 中金 target HK$900).
 
-### 改进方向
-1. NPMM 过滤 + ATR 自适应阈值
-2. 多尺度 Trend Scanning 混合
-3. 融入 Triple-Barrier 风控
+**Detail files**: Research documents in `memory/` directory. Trading strategy details in `openclaw-trading/strategies/`.
 
 ---
 
-## Ground Truth 最终算法 (2026-02-13)
+## 4. Geopolitical Tracking
 
-### 流程 (最优顺序: 1→2→4)
-```
-1. NPMM N=5        → 找5日新低/高反转点
-2. Merge (min=7)   → 合并短于7天的段
-4. Smart Merge     → 只合并同向趋势
-```
+**Purpose**: Ongoing monitoring of US-Iran conflict and China-US dynamics for investment context.
 
-### 参数
-- N=5, min_days=7, up_thresh=5%, down_thresh=5%
+**Locations**:
+- Iran: `memory/iran-war-tracker.md`
+- China-US: `memory/2026-04-30-dxy-and-ushina-calls.md`
+- Analysis framework: 教员（毛泽东）思维框架
 
-### BABA 结果
-- 32段 (U=11, D=11, C=10)
+**Status**: Iran conflict ongoing (US military involvement in Hormuz). DXY dropped 19% (Mar→Apr 2026). China-US multi-level calls initiated 4/30. Key risk: energy prices (Brent $126) and supply chain.
 
-### 执行顺序影响
-| 顺序 | 结果 |
-|------|------|
-| 1→2→4 | 32段 (最优) |
-| 1→4→2 | 45段 |
-
-### 文件
-- 代码: `strategies/multi_factor/ground_truth_generator.py`
-- 文档: `strategies/multi_factor/README_GROUND_TRUTH.md`
+**Detail files**: Analysis in `memory/iran-war-analyses/` directory.
 
 ---
 
-## 多因子策略模型进展 (2026-02-14)
+## 5. AI Industry Tracking
 
-### 最佳模型
-- **方法**: Feature Selection + Random Forest
-- **准确率**: 69.05%
-- **F1 Score**: 0.7033
+**Purpose**: Monitoring competitive landscape in AI for investment and strategy context.
 
-### GT衍生特征
-- 13个新特征，基于GT算法生成的趋势标签
-- 重要特征: gt_trend_category, gt_trend_change_pct
+**Locations**:
+- Anthropic: `memory/anthropic-mythos-tracker.md`
+- China AI market: various analyses in `memory/`
 
-### 数据
-- 8只股票: BABA, NVDA, TSLA, AMD, PDD, DQ, MQ, LAC
-- 总样本: ~5,500
+**Key positions**: Anthropic Mythos not public (five-factor analysis). China model market polarizing (big tech vs independents). Agent era thesis driving CPU demand shift.
 
-### INTC预测
-- GT: CONSOLIDATION (当前)
-- ML: UPTREND (69.6%), 置信度51.1%
+**Detail files**: `memory/anthropic-mythos-tracker.md`
 
 ---
 
-## Target 2: 下一趋势预测实验 (2026-02-15)
+## 6. Agent Architecture
 
-### 三分类结果 (困难)
-| Iter | 方法 | Accuracy | ROC-AUC |
-|------|------|----------|---------|
-| 1 | Baseline RF | 32.4% | 0.439 |
-| 2 | Tuned RF | 31.7% | 0.439 |
-| 3 | RF + Platt | 34.1% | 0.532 |
+**Purpose**: This project — redesigning OpenClaw agent memory architecture using Qian Xuesen's engineering cybernetics.
 
-### 二分类结果 (较好)
-| 方法 | Accuracy | ROC-AUC | F1 |
-|------|----------|---------|-----|
-| RF + Platt | 63.6% | 0.718 | 0.684 |
+**Context**: Three-layer memory architecture (L1 control laws → L2 abstract patterns → L3 project directory) with control-theory feedback loop for skill and memory consolidation.
 
-### 关键发现
-- 三分类接近随机 (33%)，非常困难
-- 二分类显著更好，AUC=0.72
-- GT特征 (gt_trend_change_pct) 最重要
+**Locations**:
+- Git: `github.com/harshjia941-gz/qian-xuesen-engineering-cybernetics`
+- Local: `~/Documents/qian-xuesen-engineering-cybernetics/`
+- Design files: `new_md/SOUL.md`, `new_md/AGENTS.md`, `new_md/MEMORY.md`
+- Skill: `~/.openclaw/workspace/skills/qian-xuesen-perspective/`
 
-### 下一步
-- 使用二分类版本
-- 结合 Target 1 的 WEAK 概率
-- 扩展到更多股票
+**Status**: Design phase. SOUL.md v1 (L1) ✅, AGENTS.md v2 (L2, 7 abstract patterns) ✅, MEMORY.md restructured (L3). Next: deploy to workspace, test in practice.
 
 ---
 
-## Promoted From Short-Term Memory (2026-04-27)
+## Personal Context
+
+- **George** (Yuan Zhou): he/him, Toronto (originally Chengdu), timezone America/Toronto
+- **Spouse**: Jia Yue (贾悦), Chengdu, works at RBC
+- **Work**: Co-founder & Lead AI Architect @ Ferris AI (since 2025). Founded by ex-Autodesk: CTO Ahmed, CEO Quinn
+- **Harsh** (this agent): AI assistant, formal but approachable, 🦎
+
+---
+
+## Multi-Factor Strategy Results (2026-02)
+
+### Ground Truth Algorithm
+- NPMM N=5 → Merge (min=7) → Smart Merge. Optimal order: 1→2→4
+- BABA: 32 segments (U=11, D=11, C=10)
+
+### Best Model
+- Feature Selection + Random Forest, Accuracy 69.05%, F1 0.7033
+- 8 stocks, ~5,500 samples. Key feature: gt_trend_change_pct
+- Binary classification (up/down): 63.6% accuracy, AUC 0.718
+
+**Detail files**: `~/Documents/openclaw-trading/strategies/multi_factor/README_GROUND_TRUTH.md`
+
+---
+
+---
 
 <!-- openclaw-memory-promotion:memory:memory/2026-04-23.md:35:75 -->
 - - `docs/WORKFLOW.md` — 全 Agent 模式 - `docs/STRATEGY.md` — gstack Office Hour 策略 ### 工作模式确认 **全 Agent 模式**: - harsh = PM + Technical Manager (创建 ticket、分配 Builder/Tester、review MR、报告 George) - Builder Agent = sub-agent 写代码 - Tester Agent = sub-agent 跑测试 - George = 大方向和节奏 ### 下一步 (新 session 继续) 优先级排序: - 🔴 RUO-5: E2E 测试场景扩展 (High) - 🔴 RUO-6: gstack 价格验证 (High) - 🔴 RUO-12: CI/CD 自动化 (High) ### 关键路径 ``` repo: ~/Documents/smart-saver/ skill: ~/.openclaw/workspace/skills/smart-saver/ github: https://github.com/harshjia941-gz/smart-saver linear: https://linear.app/ruoshuiai ``` ## Smart Saver — PM Session: 三方向全面推进 (12:05-19:03 PDT) ### George 确认的三个方向 1. **数据引擎正确性 + 历史积累** — 数据结构完整，积累 2-3 个月 Flipp 数据 2. **功能逻辑** — 核心功能无漏洞，跨平台比价 + 智能替代推荐 3. **数据源调研** — Keepa/Walmart/PC Express 调研 + 接入路线图 ### 完成项 **方向 1:** - ✅ RUO-17: 产品标准化 — 0.9% → **99%** listings 有 product_id - ✅ RUO-18: Schema 迁移 v3.1 — +name/canonical_name/brand/model/key_specs, CHECK(price>0) - ✅ RUO-19: 每日 Flipp cron 管道 — `scripts/daily_flipp_cron.py`, 每天 6AM Toronto - ✅ RUO-22: flipp_search_v2.py retailers→merchants 修复 [score=0.931 recalls=6 avg=1.000 source=memory/2026-04-23.md:35-75]
@@ -285,10 +200,8 @@ George 长期关注伊朗局势，建立了追踪文件。
 
 ## Promoted From Short-Term Memory (2026-05-07)
 
-<!-- openclaw-memory-promotion:memory:memory/2026-04-28.md:486:488 -->
-- - - - `docs/WORKFLOW.md` — 全 Agent 模式 - `docs/STRATEGY.md` — gstack Office Hour 策略 ### 工作模式确认 **全 Agent 模式**: - harsh = PM + Technical Manager (创建 ticket、分配 Builder/Tester、review MR、报告 George) - Builder Agent = sub-agent 写代码 - Tester Agent = sub-agent 跑测试 - George = 大方向和节奏 ### 下一步 (新 session 继续) 优先级排序: - 🔴 RUO-5: E2E 测试场景扩展 (High) - 🔴 RUO-6: gstack 价格验证 (High) - 🔴 RUO-12: CI/CD 自动化 (High) ### 关键路径 ``` repo: ~/Documents/smart-saver/ skill: ~/.openclaw/workspace/skills/smart-saver/ github: https://github.com/harshjia941-gz/smart-saver linear: https://linear.app/ruoshuiai ``` ## Smart Saver — PM Session: 三方向全面推进 (12:05-19:03 PDT) ### George 确认的三个方向 1. **数据引擎正确性 + 历史积累** — 数据结构完整，积累 [confidence [confidence=0.71 evidence=memory/2026-04-26.md:405-406] <!-- openclaw:dreaming:rem:end --> [score=0.881 recalls=3 avg=1.000 source=memory/2026-04-28.md:486-488]
-<!-- openclaw-memory-promotion:memory:memory/2026-04-24.md:52:75 -->
-- - 跑了 init 后，Flipp API 正常工作 - 测试结果：Dyson V15 $499.99, milk 2% $1.78, AirPods Pro 27 results - **Skill 能跑通了！** 但有 outlier 问题（iPhone $7.18 是配件不是手机） ### DB 路径混乱问题 - 昨天的 17,088 条 price_events 数据找不到了 - DB 路径分散在 3 个位置（repo root / scripts/ / skill scripts/） - 当前总共只有 ~386 条 events - **待决策**: DB 统一到 `~/Documents/smart-saver/scripts/price_history_v2.db`，skill 层 symlink ### RUO-38 已创建，调查过程记录在 ticket comments ## Cron 暂停 (12:17 PDT) - `smart-saver-pm` — 已 disable - `flipp-daily-scrape` — 已 disable - George 要求暂停 PM cron ## 待处理 - [ ] DB 路径统一（等 George 决策） - [ ] 清理 7 个过期分支 - [ ] RUO-32 开放问题（等 George 输入） - [ ] E2E 测试发现的 3 个 follow-up（outlier 过滤 / 中文查询 / first-run 脚本） - [ ] 用新角色流程实战测试一个 Backlog ticket [score=0.848 recalls=3 avg=1.000 source=memory/2026-04-24.md:52-75]
+<!-- openclaw-memory-promotion:memory:memory/2026-04-28.md:486:488 -->[score=0.881 recalls=3 avg=1.000 source=memory/2026-04-28.md:486-488]
+<!-- openclaw-memory-promotion:memory:memory/2026-04-24.md:52:75 -->[... 133 more lines truncated]
 
 ## Promoted From Short-Term Memory (2026-05-08)
 
